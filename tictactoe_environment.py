@@ -5,11 +5,11 @@ import random
 
 
 class TicTacToeENV(gym.Env):
-    def __init__(self, render_mode, epsilon=0.2):
+    def __init__(self, render_mode="console", epsilon=0.2):
         super().__init__()
         self.render_mode = render_mode
         self.action_space = spaces.Discrete(9)
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(9,), dtype=np.int8)
+        self.observation_space = spaces.Box(low=0, high=2, shape=(9,), dtype=np.int8)
         self.board = np.zeros(9, dtype=np.int8)
         self.epsilon = epsilon
 
@@ -18,10 +18,10 @@ class TicTacToeENV(gym.Env):
         self.board = np.zeros(9, dtype=np.int8)
         if random.randint(0, 1) == 1:
             if random.uniform(0, 1) < 0.2:
-                self.board[random.randint(0, 8)] = -1
+                self.board[random.randint(0, 8)] = 2
             else:
                 _, move = self.minimax(self.board, False)
-                self.board[move] = -1
+                self.board[move] = 2
 
         info = {"message": "Nouvelle partie"}
         return self.board.copy(), info
@@ -45,13 +45,13 @@ class TicTacToeENV(gym.Env):
                 reward = 1
                 finished = True
                 info = {"message": "match gagné"}
-            case -1:
+            case 2:
                 reward = -1
                 finished = True
                 info = {"message": "match perdu"}
         if not finished:
             _, move = self.minimax(self.board, False)
-            self.board[move] = -1
+            self.board[move] = 2
             match self.winner(self.board):
                 case 0:
                     info = {"message": "match en cour"}
@@ -62,7 +62,7 @@ class TicTacToeENV(gym.Env):
                     reward = 1
                     finished = True
                     info = {"message": "match gagné"}
-                case -1:
+                case 2:
                     reward = -1
                     finished = True
                     info = {"message": "match perdu"}
@@ -82,7 +82,7 @@ class TicTacToeENV(gym.Env):
 
     def winner(self, board) -> int:
         """
-        :return -1 for computer winning, 0 for nothing, 1 for  player winning
+        :return 2 for computer winning, 0 for nothing, 1 for  player winning
         """
         lists = [
             (0, 1, 2),
@@ -104,6 +104,18 @@ class TicTacToeENV(gym.Env):
         return [i for i in range(9) if board[i] == 0]
 
     def minimax(self, board, maximising):
+        winner = self.winner(board
+        if winner != 0 or not self.empty_cases(board):
+            # Traduction des scores pour le minimax :
+            if winner == 1:
+                return 1, None   # Le joueur (maximizer) gagne
+            elif winner == 2:
+                return -1, None  # L'ordi (minimizer) gagne
+            else:
+                return 0, None   # Match nul
+
+
+
         best_score = float("-inf") if maximising else float("inf")
         best_move = None
 
@@ -112,7 +124,7 @@ class TicTacToeENV(gym.Env):
 
         for i in self.empty_cases(board):
             l_board = board.copy()
-            l_board[i] = 1 if maximising else -1
+            l_board[i] = 1 if maximising else 2
 
             l_score, _ = self.minimax(l_board, not maximising)
             if maximising:
@@ -129,7 +141,7 @@ class TicTacToeENV(gym.Env):
     def epsilon_minimax(self, board, maximising):
         best_score = float("-inf") if maximising else float("inf")
         best_move = None
-        if random.uniform(0, 1) <= self.epsilon:
+        if random.uniform(0, 1) < self.epsilon:
             return None, random.choice(self.empty_cases(board))
 
         if self.winner(board) != 0 or not self.empty_cases(board):
@@ -137,7 +149,7 @@ class TicTacToeENV(gym.Env):
 
         for i in self.empty_cases(board):
             l_board = board.copy()
-            l_board[i] = -1 if max else 1
+            l_board[i] = 2 if max else 1
             if maximising:
                 l_score, _ = self.minimax(l_board, False)
                 max(best_score, l_score)
