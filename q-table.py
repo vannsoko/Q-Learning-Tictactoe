@@ -44,13 +44,19 @@ def evaluate_agent(eval_env, q_table, nb_episodes=100, epsilon=0):
         done = False
         while not done:
             state_index = state_to_index(state)
+            valid_actions = [int(i) for i in state if i==0]
 
-            # Exploitation pure : on prend la meilleure action connue
             if random.uniform(0, 1) < epsilon or state_index == 0:
-                action = eval_env.action_space.sample()
+                # action = eval_env.action_space.sample()
+                action = random.choice(valid_actions)
             else:
-                action = np.argmax(q_table[state_index: state_index+9])
-
+                # action = np.argmax(q_table[state_index: state_index+9])
+                max = float("-inf")
+                action = valid_actions[0]
+                for i in valid_actions:
+                    if (val := q_table[state_index+i])>max:
+                        max = val
+                        action = i
             state, reward, finished, truncated, info = eval_env.step(action)
             done = finished or truncated
 
@@ -109,6 +115,9 @@ def update_q_table(state: np.array, action: int, value: int):
 
 
 print("début de l'entraînement")
+
+def agent_action():
+    ...
 
 
 def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma, epsilon_min=epsilon_min, epsilon_decay=epsilon_decay):
