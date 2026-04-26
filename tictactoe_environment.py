@@ -104,7 +104,7 @@ class TicTacToeENV(gym.Env):
         return [i for i in range(9) if board[i] == 0]
 
     def minimax(self, board, maximising):
-        winner = self.winner(board
+        winner = self.winner(board)
         if winner != 0 or not self.empty_cases(board):
             # Traduction des scores pour le minimax :
             if winner == 1:

@@ -60,18 +60,35 @@ def evaluate_agent(eval_env, q_table, nb_episodes=100, epsilon=0):
     return results
 
 
-def state_to_index(state, action=0):
+def state_to_index(state, action=0) -> int:
     state_value = 0
 
     # Same idea as a bitmask but with 3 possibilites
     for i in range(9):
-        state_value += state[i] * (3**i)
+        state_value += int(state[i]) * (3**i)
 
 
     # Multiply times 9 to create space for the 9 possible (valid or not) actions per state 
     state_value *= 9
 
     state_value += action
+    
+    return state_value
+
+
+def rotate_state(state: np.array, action: int) -> (np.array, int):
+    # rotation 90 degree à droite
+    n_state = np.zeros(9, dtype=np.int8)
+    
+    for i in range(3):
+        n_state[i] = state[i+6]
+        n_state[i+1] = state[i+3]
+        n_state[i+2] = state[i]
+
+    rot_action_dic = {0:6, 1:3, 2:0, 3:7, 4:4, 5:1, 6:8, 7:5, 8:2}
+    n_action = rot_action_dic.get(action)
+
+    return n_state, n_action
 
 
 #   q_table[state_tuple][action] = nouvelle_valeur
@@ -79,11 +96,16 @@ def update_q_table(state: np.array, action: int, value: int):
     global q_table
     
     state_index = state_to_index(state, action)
-    q_table[state_index+action] = value
+    q_table[state_index] = value
 
 
-    # TODO update la q_table pour toutes les simetries disponible
     # rotation
+    rot_state, rot_action = state, action
+    for i in range(3):
+        rot_state, rot_action = rotate_state(rot_state, rot_action)
+        rot_state_index = state_to_index(rot_state, rot_action)
+        q_table[rot_state_index] = value
+
 
 
 print("début de l'entraînement")
@@ -102,13 +124,18 @@ def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma
         while not termine:
             state_index = state_to_index(state)
 
+            valid_actions = [int(i) for i in state if i==0]
+
             if episode < 2000 or random.uniform(0, 1) < epsilon:
-                # valid_actions = [i for i, v in enumerate(state) if v == 0]
-                # action = random.choice(valid_actions)
-                valid_actions = [i for i in range(9)]
-                action = env.action_space.sample()
+                action = random.choice(valid_actions)
             else:
-                action = np.argmax(q_table[state_index:state_index+9])
+                max = float("-inf")
+                action = valid_actions[0]
+                for i in valid_actions:
+                    if  (val := q_table[state_index+valid_actions[i]]) > max:
+                        max = val
+                        action = valid_actions[i]
+                # action = np.argmax(q_table[state_index:state_index+9])
     
             next_state, reward, finished, truncated, info = env.step(action)
             next_state_index = state_to_index(next_state)
@@ -120,7 +147,9 @@ def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma
             if termine:
                 max_future_q = 0
             else:
-                max_future_q = np.max(q_table[next_state_index:next_state_index+9])
+                next_valid_actions = [int(i) for i in next_state if i==0]
+                max_future_q = np.max([q_table[next_state_index+val] for val in next_valid_actions])
+#                max_future_q = np.max(q_table[next_state_index:next_state_index+9])
     
             #  Q(s, a) <- Q(s, a) + alpha [ R + gamma * max_{a'} Q(s', a') - Q(s, a) ]
     
@@ -163,11 +192,11 @@ def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma
                 pickle.dump(q_table, file)
 
 
-func()
+func(1)
 print("Training complete! Saving the agent...")
 
 # Open a file in 'wb' (write binary) mode
-with open("tictactoe_q_table.pkl", "wb") as file:
+with open("tictactoe_q_table_final.pkl", "wb") as file:
     pickle.dump(q_table, file)
 
 print("Agent successfully saved to 'tictactoe_q_table.pkl'!")
