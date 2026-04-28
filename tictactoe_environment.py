@@ -114,13 +114,8 @@ class TicTacToeENV(gym.Env):
             else:
                 return 0, None   # Match nul
 
-
-
         best_score = float("-inf") if maximising else float("inf")
         best_move = None
-
-        if self.winner(board) != 0 or not self.empty_cases(board):
-            return self.winner(board), None
 
         for i in self.empty_cases(board):
             l_board = board.copy()
@@ -139,26 +134,34 @@ class TicTacToeENV(gym.Env):
         return best_score, best_move
 
     def epsilon_minimax(self, board, maximising):
-        best_score = float("-inf") if maximising else float("inf")
-        best_move = None
         if random.uniform(0, 1) < self.epsilon:
             return None, random.choice(self.empty_cases(board))
 
-        if self.winner(board) != 0 or not self.empty_cases(board):
-            return self.winner(), None
+        winner = self.winner(board)
+        if winner != 0 or not self.empty_cases(board):
+            if winner == 1:
+                return 1, None
+            elif winner == 2:
+                return -1, None
+            else:
+                return 0, None
+
+        best_score = float("-inf") if maximising else float("inf")
+        best_move = None
 
         for i in self.empty_cases(board):
             l_board = board.copy()
-            l_board[i] = 2 if max else 1
+            l_board[i] = 1 if maximising else 2
+            
             if maximising:
                 l_score, _ = self.minimax(l_board, False)
-                max(best_score, l_score)
                 if l_score > best_score:
+                    best_score = l_score
                     best_move = i
             else:
                 l_score, _ = self.minimax(l_board, True)
-                min(best_score, l_score)
                 if l_score < best_score:
+                    best_score = l_score
                     best_move = i
 
-        return None, best_move
+        return best_score, best_move

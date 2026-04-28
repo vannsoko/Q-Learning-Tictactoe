@@ -44,18 +44,18 @@ def evaluate_agent(eval_env, q_table, nb_episodes=100, epsilon=0):
         done = False
         while not done:
             state_index = state_to_index(state)
-            valid_actions = [int(i) for i in state if i==0]
+            valid_actions = [i for i, val in enumerate(state) if val == 0]
 
             if random.uniform(0, 1) < epsilon or state_index == 0:
                 # action = eval_env.action_space.sample()
                 action = random.choice(valid_actions)
             else:
                 # action = np.argmax(q_table[state_index: state_index+9])
-                max = float("-inf")
+                max_val = float("-inf")
                 action = valid_actions[0]
                 for i in valid_actions:
-                    if (val := q_table[state_index+i])>max:
-                        max = val
+                    if (val := q_table[state_index+i])>max_val:
+                        max_val = val
                         action = i
             state, reward, finished, truncated, info = eval_env.step(action)
             done = finished or truncated
@@ -84,14 +84,11 @@ def state_to_index(state, action=0) -> int:
 
 def rotate_state(state: np.array, action: int) -> (np.array, int):
     # rotation 90 degree à droite
-    n_state = np.zeros(9, dtype=np.int8)
-    
-    for i in range(3):
-        n_state[i] = state[i+6]
-        n_state[i+1] = state[i+3]
-        n_state[i+2] = state[i]
+    n_state = np.array([state[6], state[3], state[0], 
+                        state[7], state[4], state[1], 
+                        state[8], state[5], state[2]], dtype=np.int8)
 
-    rot_action_dic = {0:6, 1:3, 2:0, 3:7, 4:4, 5:1, 6:8, 7:5, 8:2}
+    rot_action_dic = {0:2, 1:5, 2:8, 3:1, 4:4, 5:7, 6:0, 7:3, 8:6}
     n_action = rot_action_dic.get(action)
 
     return n_state, n_action
@@ -116,7 +113,7 @@ def update_q_table(state: np.array, action: int, value: int):
 
 print("début de l'entraînement")
 
-def agent_action():
+def agent_action(env, state: np.array, randomfunc):
     ...
 
 
@@ -133,17 +130,17 @@ def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma
         while not termine:
             state_index = state_to_index(state)
 
-            valid_actions = [int(i) for i in state if i==0]
+            valid_actions = [i for i, val in enumerate(state) if val == 0]
 
             if episode < 2000 or random.uniform(0, 1) < epsilon:
                 action = random.choice(valid_actions)
             else:
-                max = float("-inf")
+                max_val = float("-inf")
                 action = valid_actions[0]
                 for i in valid_actions:
-                    if  (val := q_table[state_index+valid_actions[i]]) > max:
-                        max = val
-                        action = valid_actions[i]
+                    if  (val := q_table[state_index+i]) > max_val:
+                        max_val = val
+                        action = i
                 # action = np.argmax(q_table[state_index:state_index+9])
     
             next_state, reward, finished, truncated, info = env.step(action)
@@ -156,7 +153,7 @@ def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma
             if termine:
                 max_future_q = 0
             else:
-                next_valid_actions = [int(i) for i in next_state if i==0]
+                next_valid_actions = [i for i, val in enumerate(next_state) if val == 0]
                 max_future_q = np.max([q_table[next_state_index+val] for val in next_valid_actions])
 #                max_future_q = np.max(q_table[next_state_index:next_state_index+9])
     
@@ -200,12 +197,12 @@ def func(worker_id, episodes=episodes, alpha=alpha, epsilon=epsilon, gamma=gamma
             with open(f"tictactoe_q_table_{episode}.pkl", "wb") as file:
                 pickle.dump(q_table, file)
 
-
-func(1)
-print("Training complete! Saving the agent...")
+if __name__ == '__main__':
+    func(1)
+    print("Training complete! Saving the agent...")
 
 # Open a file in 'wb' (write binary) mode
-with open("tictactoe_q_table_final.pkl", "wb") as file:
-    pickle.dump(q_table, file)
+    with open("tictactoe_q_table_final.pkl", "wb") as file:
+        pickle.dump(q_table, file)
 
-print("Agent successfully saved to 'tictactoe_q_table.pkl'!")
+    print("Agent successfully saved to 'tictactoe_q_table.pkl'!")
